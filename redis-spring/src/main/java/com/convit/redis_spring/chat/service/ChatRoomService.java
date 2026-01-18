@@ -1,6 +1,7 @@
 package com.convit.redis_spring.chat.service;
 
 import org.redisson.RedissonReactive;
+import org.redisson.api.RListReactive;
 import org.redisson.api.RTopicReactive;
 import org.redisson.api.RedissonReactiveClient;
 import org.redisson.client.codec.StringCodec;
@@ -25,15 +26,17 @@ public class ChatRoomService implements WebSocketHandler {
     public Mono<Void> handle(WebSocketSession webSocketSession) {
         String room = getChatRoomName(webSocketSession);
         RTopicReactive topic = this.client.getTopic(room, StringCodec.INSTANCE);
+        RListReactive<String> list = this.client.getList("history:" + room, StringCodec.INSTANCE);
 
         webSocketSession.receive()
                 .map(WebSocketMessage::getPayloadAsText)
-                .flatMap(topic::publish)
+                .flatMap(msg -> list.add(msg).then(topic.publish(msg)))
                 .doOnError(System.out::println)
                 .doFinally(s -> System.out.println("Subscriber finally " + s))
                 .subscribe();
 
         Flux<WebSocketMessage> flux = topic.getMessages(String.class)
+                .startWith(list.iterator())
                 .map(webSocketSession::textMessage)
                 .doOnError(System.out::println)
                 .doFinally(s -> System.out.println("Publisher finally " + s));
