@@ -20,7 +20,7 @@ public class FibService {
         System.out.print("clearing hash key");
     }
 
-    @Scheduled(fixedRate = 10000)
+//    @Scheduled(fixedRate = 10000)
     @CacheEvict(value = "math:fib", allEntries = true)
     public void clearCache() {
         System.out.print("clearing all fib keys");
